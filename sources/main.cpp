@@ -40,7 +40,7 @@ Mat rgb2gray(Mat input_image) {
     uchar* p_row_input = p_data_input;
     uchar* p_row_output = p_data_output;
     for (int x = 0; x < width_input; x++, p_row_input += n_channels_input, p_row_output += n_channels_output) {
-      p_row_output[0] = 0.0722 * p_row_input[0] + 0.7152 * p_row_input[1] + 0.2126 * p_row_input[2];
+      p_row_output[0] = 0.114 * p_row_input[0] + 0.587 * p_row_input[1] + 0.299 * p_row_input[2];
     }
   }
 
@@ -53,7 +53,8 @@ Mat brightness(Mat input_image, float brightness_factor) {
   unordered_map<float, float> brightness_table;
 
   for (int i = 0; i <= 255; i++) {
-    brightness_table[i] = min(max(i + i * brightness_factor, 0.0f), 255.0f);
+    float factor = i + brightness_factor;
+    brightness_table[i] = min(max(factor, 0.0f), 255.0f);
   }
 
   // Information of input image
@@ -90,12 +91,15 @@ Mat brightness(Mat input_image, float brightness_factor) {
 
 // 5. Change the contrast of an image.
 Mat contrast(Mat input_image, float contrast_factor) {
+  // Constant input
+  int s = 128;
+
   // Create constant hash table of 
   unordered_map<float, float> contrast_table;
 
   for (int i = 0; i <= 255; i++) {
-    float factor = (259.0f * (255.0f * contrast_factor + 255.0f)) / (255.0f * (259.0f - 255.0f * contrast_factor));
-    contrast_table[i] = min(max(factor * (i - 128) + 128, 0.0f), 255.0f);
+    float factor = s + contrast_factor * (i - s);
+    contrast_table[i] = min(max(factor, 0.0f), 255.0f);
   }
 
   // Information of input image
@@ -149,8 +153,9 @@ Mat filter_avg(Mat input_image, int kernel_size) {
   int n_channels_output = output_image.step[1];
 
   // Loop
-  int padding = kernel_size / 2 * n_channels_input;
-  uchar* p_data_input = (uchar*)input_image.data + padding + width_step_input * (kernel_size/2);
+  int padding_col = kernel_size / 2 * n_channels_input;
+  int padding_row = width_step_input * (kernel_size/2);
+  uchar* p_data_input = (uchar*)input_image.data + padding_col + padding_row;
   uchar* p_data_output = (uchar*)output_image.data;
   for (int y = 0; y < height_input - kernel_size + 1; y++, p_data_input += width_step_input, p_data_output += width_step_output) {
     uchar* p_row_input = p_data_input;
@@ -158,7 +163,7 @@ Mat filter_avg(Mat input_image, int kernel_size) {
     for (int x = 0; x < width_input - kernel_size + 1; x++, p_row_input += n_channels_input, p_row_output += n_channels_output) {
       // Loop through kernel
       vector<float> avg_kernel(n_channels_input, 0.0);
-      uchar* p_pixel = p_row_input - width_step_input * (kernel_size / 2) - padding;
+      uchar* p_pixel = p_row_input - padding_col - padding_row;
       for (int ky = 0; ky < kernel_size; ky++, p_pixel += width_step_input) {
         uchar* p_row_pixel = p_pixel;
         for (int kx = 0; kx < kernel_size; kx++, p_row_pixel += n_channels_input) {
@@ -195,8 +200,9 @@ Mat filter_med(Mat input_image, int kernel_size) {
   int n_channels_output = output_image.step[1];
 
   // Loop
-  int padding = kernel_size / 2 * n_channels_input; 
-  uchar* p_data_input = (uchar*)input_image.data + padding + width_step_input * (kernel_size / 2);
+  int padding_col = kernel_size / 2 * n_channels_input;
+  int padding_row = width_step_input * (kernel_size/2);
+  uchar* p_data_input = (uchar*)input_image.data + padding_row + padding_col;
   uchar* p_data_output = (uchar*)output_image.data;
   for (int y = 0; y < height_input - kernel_size + 1; y++, p_data_input += width_step_input, p_data_output += width_step_output) {
     uchar* p_row_input = p_data_input;
@@ -204,7 +210,7 @@ Mat filter_med(Mat input_image, int kernel_size) {
     for (int x = 0; x < width_input - kernel_size + 1; x++, p_row_input += n_channels_input, p_row_output += n_channels_output) {
       // Loop through color
       for (int c = 0; c < n_channels_input; c++) {
-        uchar* p_pixel = p_row_input - width_step_input * (kernel_size / 2) - padding;
+        uchar* p_pixel = p_row_input - padding_col - padding_row;
         vector<float> med_kernel;
         // Loop through kernel
         for (int ky = 0; ky < kernel_size; ky++, p_pixel += width_step_input) {
@@ -260,8 +266,9 @@ Mat filter_gau(Mat input_image, int kernel_size) {
   int n_channels_output = output_image.step[1];
 
   // Loop
-  int padding = kernel_size / 2 * n_channels_input; 
-  uchar* p_data_input = (uchar*)input_image.data + padding + width_step_input * (kernel_size / 2);
+  int padding_col = kernel_size / 2 * n_channels_input;
+  int padding_row = width_step_input * (kernel_size/2);
+  uchar* p_data_input = (uchar*)input_image.data + padding_row + padding_col;
   uchar* p_data_output = (uchar*)output_image.data;
   for (int y = 0; y < height_input - kernel_size + 1; y++, p_data_input += width_step_input, p_data_output += width_step_output) {
     uchar* p_row_input = p_data_input;
@@ -269,7 +276,7 @@ Mat filter_gau(Mat input_image, int kernel_size) {
     for (int x = 0; x < width_input - kernel_size + 1; x++, p_row_input += n_channels_input, p_row_output += n_channels_output) {
       // Loop through kernel
       vector<float> gau_sum(n_channels_input, 0.0);
-      uchar* p_pixel = p_row_input - width_step_input * (kernel_size / 2) - padding;
+      uchar* p_pixel = p_row_input - padding_col - padding_row;
       for (int ky = 0; ky < kernel_size; ky++, p_pixel += width_step_input) {
         uchar* p_row_pixel = p_pixel;
         for (int kx = 0; kx < kernel_size; kx++, p_row_pixel += n_channels_input) {
@@ -313,8 +320,9 @@ Mat detect_sobel(Mat input_image) {
   int n_channels_output = output_image.step[1];
 
   // Loop
-  int padding = kernel_size / 2 * n_channels_input; 
-  uchar* p_data_input = (uchar*)input_image.data + padding + width_step_input * (kernel_size / 2);
+  int padding_col = kernel_size / 2 * n_channels_input;
+  int padding_row = width_step_input * (kernel_size/2);
+  uchar* p_data_input = (uchar*)input_image.data + padding_row + padding_col;
   uchar* p_data_output = (uchar*)output_image.data;
   for (int y = 0; y < height_input - kernel_size + 1; y++, p_data_input += width_step_input, p_data_output += width_step_output) {
     uchar* p_row_input = p_data_input;
@@ -323,7 +331,7 @@ Mat detect_sobel(Mat input_image) {
       // Loop through kernel
       vector<float> sum_kernel_x(n_channels_input, 0.0);
       vector<float> sum_kernel_y(n_channels_input, 0.0);
-      uchar* p_pixel = p_row_input - width_step_input * (kernel_size / 2) - padding;
+      uchar* p_pixel = p_row_input - padding_col - padding_row;
       for (int ky = 0; ky < kernel_size; ky++, p_pixel += width_step_input) {
         uchar* p_row_pixel = p_pixel;
         for (int kx = 0; kx < kernel_size; kx++, p_row_pixel += n_channels_input) {
@@ -346,9 +354,9 @@ Mat detect_sobel(Mat input_image) {
 Mat detect_laplace(Mat input_image) {
   // Create kernel
   int kernel_size = 3;
-  vector<vector<int>> laplace_kernel = {{-1, 0, 1},
-                                        {-2, 0, 2},
-                                        {-1, 0, 1}};
+  vector<vector<int>> laplace_kernel = {{0, 1, 0},
+                                        {1, -4, 1},
+                                        {0, 1, 0}};
 
   // Grayscale input image
   input_image = rgb2gray(input_image);
@@ -365,8 +373,9 @@ Mat detect_laplace(Mat input_image) {
   int n_channels_output = output_image.step[1];
 
   // Loop
-  int padding = kernel_size / 2 * n_channels_input; 
-  uchar* p_data_input = (uchar*)input_image.data + padding + width_step_input * (kernel_size / 2);
+  int padding_col = kernel_size / 2 * n_channels_input;
+  int padding_row = width_step_input * (kernel_size/2);
+  uchar* p_data_input = (uchar*)input_image.data + padding_col + padding_row;
   uchar* p_data_output = (uchar*)output_image.data;
   for (int y = 0; y < height_input - kernel_size + 1; y++, p_data_input += width_step_input, p_data_output += width_step_output) {
     uchar* p_row_input = p_data_input;
@@ -374,7 +383,7 @@ Mat detect_laplace(Mat input_image) {
     for (int x = 0; x < width_input - kernel_size + 1; x++, p_row_input += n_channels_input, p_row_output += n_channels_output) {
       // Loop through kernel
       vector<float> sum_laplace(n_channels_input, 0.0);
-      uchar* p_pixel = p_row_input - width_step_input * (kernel_size / 2) - padding;
+      uchar* p_pixel = p_row_input - padding_row - padding_col;
       for (int ky = 0; ky < kernel_size; ky++, p_pixel += width_step_input) {
         uchar* p_row_pixel = p_pixel;
         for (int kx = 0; kx < kernel_size; kx++, p_row_pixel += n_channels_input) {
@@ -411,26 +420,38 @@ int main(int argc, char* argv[]) {
     output = rgb2gray(image);
   } else if (strcmp(command, "-brightness") == 0) {
     float brightness_factor = stof(argv[4]);
-    if (brightness_factor < -1 || brightness_factor > 1) {
-      cout << "Input the brightness factor from 0 to 1" << endl;
+    if (brightness_factor < -255 || brightness_factor > 255) {
+      cout << "Input the brightness factor from -255 to 255" << endl;
       return -1;
     }
     output = brightness(image, brightness_factor);
   } else if (strcmp(command, "-contrast") == 0) {
     float contrast_factor = stof(argv[4]);
-    if (contrast_factor < -1 || contrast_factor > 1) {
-      cout << "Input the brightness factor from 0 to 1" << endl;
+    if (contrast_factor < 0) {
+      cout << "Input the contrast factor larger than 0" << endl;
       return -1;
     }
     output = contrast(image, contrast_factor);
   } else if (strcmp(command, "-avg") == 0) {
-    float kernel_size = stoi(argv[4]);
+    int kernel_size = stoi(argv[4]);
+    if ((kernel_size % 2) == 0) {
+      cout << "Input the odd kernel size" << endl;
+      return -1;
+    }
     output = filter_avg(image, kernel_size);
   } else if (strcmp(command, "-med") == 0) {
-    float kernel_size = stoi(argv[4]);
+    int kernel_size = stoi(argv[4]);
+    if ((kernel_size % 2) == 0) {
+      cout << "Input the odd kernel size" << endl;
+      return -1;
+    }
     output = filter_med(image, kernel_size);
   } else if (strcmp(command, "-gau") == 0) {
-    float kernel_size = stoi(argv[4]);
+    int kernel_size = stoi(argv[4]);
+    if ((kernel_size % 2) == 0) {
+      cout << "Input the odd kernel size" << endl;
+      return -1;
+    }
     output = filter_gau(image, kernel_size);
   } else if (strcmp(command, "-sobel") == 0) {
     output = detect_sobel(image);
@@ -438,6 +459,7 @@ int main(int argc, char* argv[]) {
     output = detect_laplace(image);
   } else {
     cout << "Unknown command\n";
+    return -1;
   }
 
   save_image(output, output_file);
